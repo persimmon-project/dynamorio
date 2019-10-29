@@ -8878,7 +8878,8 @@ app_pc
 get_application_base(void)
 {
     if (executable_start == NULL) {
-#if defined(STATIC_LIBRARY)
+// #if defined(STATIC_LIBRARY)
+#if 0
         /* When compiled statically, the app and the DR's "library" are the same. */
         executable_start = get_dynamorio_dll_start();
         executable_end = get_dynamorio_dll_end();

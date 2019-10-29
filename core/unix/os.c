@@ -3858,7 +3858,7 @@ get_num_processors(void)
  * with -no_private_loader, so this should never happen.
  */
 
-#if defined(CLIENT_INTERFACE) || defined(HOT_PATCHING_INTERFACE)
+#if (defined(CLIENT_INTERFACE) || defined(HOT_PATCHING_INTERFACE)) && !defined(STATIC_LIBRARY)
 shlib_handle_t
 load_shared_library(const char *name, bool reachable)
 {
@@ -3889,7 +3889,7 @@ load_shared_library(const char *name, bool reachable)
 }
 #endif
 
-#if defined(CLIENT_INTERFACE)
+#if defined(CLIENT_INTERFACE) && !defined(STATIC_LIBRARY)
 shlib_routine_ptr_t
 lookup_library_routine(shlib_handle_t lib, const char *name)
 {

@@ -300,8 +300,10 @@ static callback_list_t persist_patch_callbacks = {
 typedef struct _client_lib_t {
     client_id_t id;
     char path[MAXIMUM_PATH];
+#    ifndef STATIC_LIBRARY
     /* PR 366195: dlopen() handle truly is opaque: != start */
     shlib_handle_t lib;
+#    endif
     app_pc start;
     app_pc end;
     /* The raw option string, which after i#1736 contains token-delimiting quotes */
@@ -521,7 +523,9 @@ static void
 add_client_lib(const char *path, const char *id_str, const char *options)
 {
     client_id_t id;
+#    ifndef STATIC_LIBRARY
     shlib_handle_t client_lib;
+#    endif
     DEBUG_DECLARE(size_t i);
 
     ASSERT(!dynamo_initialized);
@@ -543,9 +547,13 @@ add_client_lib(const char *path, const char *id_str, const char *options)
 
     LOG(GLOBAL, LOG_INTERP, 4, "about to load client library %s\n", path);
 
+#    ifdef STATIC_LIBRARY
+    if (false) {
+#    else
     client_lib =
         load_shared_library(path, IF_X64_ELSE(DYNAMO_OPTION(reachable_client), true));
     if (client_lib == NULL) {
+#    endif
         char msg[MAXIMUM_PATH * 4];
         char err[MAXIMUM_PATH * 2];
         shared_library_error(err, BUFFER_SIZE_ELEMENTS(err));
@@ -569,8 +577,13 @@ add_client_lib(const char *path, const char *id_str, const char *options)
                get_application_pid(), path, msg);
     } else {
         /* PR 250952: version check */
+#    ifdef STATIC_LIBRARY
+        extern int _USES_DR_VERSION_;
+        int *uses_dr_version = &_USES_DR_VERSION_;
+#    else
         int *uses_dr_version =
             (int *)lookup_library_routine(client_lib, USES_DR_VERSION_NAME);
+#    endif
         if (uses_dr_version == NULL || *uses_dr_version < OLDEST_COMPATIBLE_VERSION ||
             *uses_dr_version > NEWEST_COMPATIBLE_VERSION) {
             /* not a fatal usage error since we want release build to continue */
@@ -581,7 +594,9 @@ add_client_lib(const char *path, const char *id_str, const char *options)
         } else {
             size_t idx = num_client_libs++;
             client_libs[idx].id = id;
+#    ifndef STATIC_LIBRARY
             client_libs[idx].lib = client_lib;
+#    endif
             app_pc client_start, client_end;
 #    if defined(STATIC_LIBRARY) && defined(LINUX)
             // For DR under static+linux we know that the client and DR core
@@ -623,8 +638,13 @@ add_client_lib(const char *path, const char *id_str, const char *options)
                 NULL_TERMINATE_BUFFER(client_libs[idx].options);
             }
 #    ifdef X86
+#    ifdef STATIC_LIBRARY
+            extern bool _DR_CLIENT_AVX512_CODE_IN_USE_;
+            bool *client_avx512_code_in_use = &_DR_CLIENT_AVX512_CODE_IN_USE_;
+#    else
             bool *client_avx512_code_in_use = (bool *)lookup_library_routine(
                 client_lib, DR_CLIENT_AVX512_CODE_IN_USE_NAME);
+#    endif
             if (client_avx512_code_in_use != NULL) {
                 if (*client_avx512_code_in_use)
                     d_r_set_client_avx512_code_in_use();
@@ -726,11 +746,17 @@ instrument_init(void)
 
     /* Iterate over the client libs and call each init routine */
     for (i = 0; i < num_client_libs; i++) {
+#    ifdef STATIC_LIBRARY
+        void dr_client_main(client_id_t, int, const char **);
+        void (*init)(client_id_t, int, const char **) = dr_client_main;
+        void (*legacy)(client_id_t) = NULL;
+#    else
         void (*init)(client_id_t, int, const char **) =
             (void (*)(client_id_t, int, const char **))(
                 lookup_library_routine(client_libs[i].lib, INSTRUMENT_INIT_NAME));
         void (*legacy)(client_id_t) = (void (*)(client_id_t))(
             lookup_library_routine(client_libs[i].lib, INSTRUMENT_INIT_NAME_LEGACY));
+#    endif
 
         /* we can't do this in instrument_load_client_libs() b/c vmheap
          * is not set up at that point
@@ -882,7 +908,9 @@ instrument_exit(void)
         size_t i;
         for (i = 0; i < num_client_libs; i++) {
             free_callback_list(&client_libs[i].nudge_callbacks);
+#    ifndef STATIC_LIBRARY
             unload_shared_library(client_libs[i].lib);
+#    endif
             if (client_libs[i].argv != NULL)
                 free_option_array(client_libs[i].argc, client_libs[i].argv);
         }
@@ -3433,6 +3461,7 @@ instrument_client_lib_unloaded(byte *start, byte *end)
  * CLIENT AUXILIARY LIBRARIES
  */
 
+#    ifndef STATIC_LIBRARY
 DR_API
 dr_auxlib_handle_t
 dr_load_aux_library(const char *name, byte **lib_start /*OPTIONAL OUT*/,
@@ -3460,7 +3489,9 @@ dr_load_aux_library(const char *name, byte **lib_start /*OPTIONAL OUT*/,
     }
     return lib;
 }
+#    endif
 
+#    ifndef STATIC_LIBRARY
 DR_API
 dr_auxlib_routine_ptr_t
 dr_lookup_aux_library_routine(dr_auxlib_handle_t lib, const char *name)
@@ -3469,7 +3500,9 @@ dr_lookup_aux_library_routine(dr_auxlib_handle_t lib, const char *name)
         return NULL;
     return lookup_library_routine(lib, name);
 }
+#    endif
 
+#    ifndef STATIC_LIBRARY
 DR_API
 bool
 dr_unload_aux_library(dr_auxlib_handle_t lib)
@@ -3504,6 +3537,7 @@ dr_unload_aux_library(dr_auxlib_handle_t lib)
         return false;
     }
 }
+#    endif
 
 #    if defined(WINDOWS) && !defined(X64)
 /* XXX i#1633: these routines all have 64-bit handle and routine types for

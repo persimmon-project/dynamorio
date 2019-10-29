@@ -903,6 +903,7 @@ privload_locate(const char *name, privmod_t *dep,
 
 #pragma weak dlsym
 
+#    ifndef STATIC_LIBRARY
 app_pc
 get_private_library_address(app_pc modbase, const char *name)
 {
@@ -963,6 +964,7 @@ get_private_library_address(app_pc modbase, const char *name)
 #endif
     return NULL;
 }
+#    endif
 
 static void
 privload_call_lib_func(fp_t func)

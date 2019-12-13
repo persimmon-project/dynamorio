@@ -539,6 +539,7 @@ get_dynamorio_library_path(void);
  * (e.g., https://github.com/DynamoRIO/drmemory/issues/1778).
  */
 #define DR_MEMPROT_VDSO 0x20
+#define DR_MEMPROT_STACK 0x40
 
 /**
  * Flags describing memory used by dr_query_memory_ex().
@@ -576,6 +577,7 @@ typedef struct _dr_mem_info_t {
 #define MEMPROT_READ DR_MEMPROT_READ
 #define MEMPROT_WRITE DR_MEMPROT_WRITE
 #define MEMPROT_EXEC DR_MEMPROT_EXEC
+#define MEMPROT_STACK DR_MEMPROT_STACK
 #ifdef WINDOWS
 #    define MEMPROT_GUARD DR_MEMPROT_GUARD
 #else

@@ -1465,12 +1465,12 @@ DYNAMIC_OPTION(bool, pause_via_loop,
     /* We prefer low addresses in general, and only need this option if it's
      * an absolute requirement (XXX i#829: it is required for mixed-mode).
      */
-    OPTION_DEFAULT(bool, heap_in_lower_4GB, false,
+    OPTION_DEFAULT(bool, heap_in_lower_4GB, true,
                    "on 64bit request that the dr heap be allocated entirely within the "
                    "lower 4GB of address space so that it can be accessed directly as a "
                    "32bit address. See PR 215395.  Requires -reachable_heap.")
     /* By default we separate heap from code and do not require reachability for heap. */
-    OPTION_DEFAULT(bool, reachable_heap, false,
+    OPTION_DEFAULT(bool, reachable_heap, true,
                    "guarantee that all heap memory is 32-bit-displacement "
                    "reachable from the code cache.")
     /* i#3570: For static DR we do not guarantee reachability. */
